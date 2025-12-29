@@ -4,8 +4,18 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- character refs (will update on respawn)
+local character
+local hrp
+
+local function setupCharacter(char)
+	character = char
+	hrp = character:WaitForChild("HumanoidRootPart")
+end
+
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+player.CharacterAdded:Connect(setupCharacter)
 
 -- gui
 local gui = Instance.new("ScreenGui")
@@ -19,7 +29,6 @@ frame.Position = UDim2.fromScale(0.4, 0.35)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Parent = gui
-
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
 local title = Instance.new("TextLabel")
@@ -96,33 +105,51 @@ UserInputService.InputChanged:Connect(function(i)
 	end
 end)
 
--- spinning with real sps meaning
+-- spinning logic (death-proof)
 local spinConnection
-local RADIUS = 2 -- studs, fake but reasonable
+local RADIUS = 2 -- studs
+local currentSPS = 0
+local spinning = false
 
-runButton.MouseButton1Click:Connect(function()
-	local studsPerSecond = tonumber(input.Text)
-	if not studsPerSecond then
-		return
-	end
+local function startSpin(studsPerSecond)
+	currentSPS = studsPerSecond
+	spinning = true
 
 	if spinConnection then
 		spinConnection:Disconnect()
 	end
 
-	-- radians per second
-	local angularSpeed = studsPerSecond / RADIUS
+	local angularSpeed = currentSPS / RADIUS
 
 	spinConnection = RunService.Heartbeat:Connect(function(dt)
-		if hrp and hrp.Parent then
+		if spinning and hrp and hrp.Parent then
 			hrp.CFrame = hrp.CFrame * CFrame.Angles(0, angularSpeed * dt, 0)
 		end
 	end)
-end)
+end
 
-stopButton.MouseButton1Click:Connect(function()
+local function stopSpin()
+	spinning = false
 	if spinConnection then
 		spinConnection:Disconnect()
 		spinConnection = nil
+	end
+end
+
+runButton.MouseButton1Click:Connect(function()
+	local value = tonumber(input.Text)
+	if not value then
+		return
+	end
+	startSpin(value)
+end)
+
+stopButton.MouseButton1Click:Connect(stopSpin)
+
+-- resume spin after respawn if it was active
+player.CharacterAdded:Connect(function()
+	if spinning and currentSPS ~= 0 then
+		task.wait(0.1)
+		startSpin(currentSPS)
 	end
 end)
