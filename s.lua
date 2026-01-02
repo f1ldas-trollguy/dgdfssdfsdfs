@@ -12,72 +12,114 @@ local Mouse = LocalPlayer:GetMouse()
 local flySpeed = 50
 local tpHoldKey = Enum.KeyCode.LeftControl
 
--- ui creation
+-- UI setup
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "HubUI"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui") -- so it doesn't disappear
+ScreenGui.Parent = game:GetService("CoreGui")
 
+-- main frame
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0, 320, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 mainFrame.BorderSizePixel = 0
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.ClipsDescendants = true
 mainFrame.Parent = ScreenGui
+mainFrame.Active = true
 
--- smooth opening animation
-mainFrame.Size = UDim2.new(0, 0, 0, 0)
-TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 400)}):Play()
+-- make draggable
+mainFrame.Draggable = true
 
--- utility to make buttons
+-- rounded corners
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+-- title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.BackgroundTransparency = 1
+title.Text = "Fildas Hub"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 24
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Parent = mainFrame
+
+-- container for buttons
+local buttonContainer = Instance.new("Frame")
+buttonContainer.Size = UDim2.new(1, 0, 1, -50)
+buttonContainer.Position = UDim2.new(0, 0, 0, 50)
+buttonContainer.BackgroundTransparency = 1
+buttonContainer.Parent = mainFrame
+
+-- smooth tween function
+local function tween(instance, properties, time)
+    TweenService:Create(instance, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), properties):Play()
+end
+
+-- utility to create nice buttons
 local function createButton(name, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 280, 0, 50)
-    btn.Position = UDim2.new(0, 10, 0, 10 + (#mainFrame:GetChildren()-1)*60)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Position = UDim2.new(0, 20, 0, (#buttonContainer:GetChildren()-1)*60)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Text = name
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 20
-    btn.Parent = mainFrame
+    btn.Parent = buttonContainer
+
+    -- rounded corners
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = btn
 
     -- hover animation
     btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+        tween(btn, {BackgroundColor3 = Color3.fromRGB(100, 100, 100)}, 0.2)
     end)
     btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+        tween(btn, {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}, 0.2)
     end)
 
     btn.MouseButton1Click:Connect(callback)
 end
 
--- fly toggle
+-- fly
 local flying = false
 local bodyVelocity
-
 createButton("Toggle Fly", function()
     flying = not flying
     if flying then
         bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
         bodyVelocity.Velocity = Vector3.new(0,0,0)
         bodyVelocity.Parent = HumanoidRootPart
-        print("fly enabled")
     else
         if bodyVelocity then bodyVelocity:Destroy() end
-        print("fly disabled")
     end
 end)
 
--- noclip toggle
+-- noclip
 local noclip = false
 createButton("Toggle Noclip", function()
     noclip = not noclip
-    print("noclip", noclip)
 end)
 
+-- teleport
+local tpEnabled = false
+createButton("Hold Ctrl + Click to TP", function()
+    tpEnabled = not tpEnabled
+end)
+
+-- example extra button placeholder
+createButton("Custom Feature", function()
+    print("do whatever you want here")
+end)
+
+-- update loop
 RunService.Stepped:Connect(function()
     if flying and bodyVelocity then
         local direction = Vector3.new(0,0,0)
@@ -100,12 +142,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- teleport to mouse click
-local tpEnabled = false
-createButton("Hold Ctrl + Click to TP", function()
-    tpEnabled = not tpEnabled
-end)
-
+-- teleport click
 Mouse.Button1Down:Connect(function()
     if tpEnabled and UserInputService:IsKeyDown(tpHoldKey) then
         HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0,3,0))
